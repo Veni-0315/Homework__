@@ -1,16 +1,17 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タイムマネジメント・カスタムアプリ</title>
+    <title>タイムマネジメント・カスタムアプリ（グラデーションカスタム復活版）</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --font-family: 'M PLUS Rounded 1c', sans-serif;
-            --theme-color: #ff9a9e; 
-            --theme-sub-color: #fad0c4;
+            /* 初期値としてのグラデーション2色 */
+            --theme-color-1: #ff9a9e; 
+            --theme-color-2: #fad0c4;
             --main-text-color: #4a4a4a;
             --bg-opacity: 1.0; 
         }
@@ -47,50 +48,51 @@
 
         .header-area {
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px dashed var(--theme-color); padding-bottom: 10px; margin-bottom: 15px;
+            border-bottom: 2px dashed var(--theme-color-1); padding-bottom: 10px; margin-bottom: 15px;
             text-shadow: 0 0 10px white, 0 0 10px white;
         }
-        #clock { font-size: 2.2rem; font-weight: 800; color: var(--theme-color); }
+        #clock { font-size: 2.2rem; font-weight: 800; color: var(--theme-color-1); }
         
         .config-section {
             background: rgba(255, 255, 255, 0.85); padding: 15px; border-radius: 15px; margin-bottom: 15px;
-            border: 1px solid var(--theme-sub-color); text-shadow: none;
+            border: 1px solid var(--theme-color-2); text-shadow: none;
         }
-        .config-title { font-weight: 800; color: var(--theme-color); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .config-title { font-weight: 800; color: var(--theme-color-1); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .config-title::after { content: '▼'; font-size: 0.8rem; transition: transform 0.3s; }
         .config-section.open .config-title::after { transform: rotate(180deg); }
         .config-content { display: none; padding-top: 15px; }
         .config-section.open .config-content { display: block; }
 
         .config-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; }
-        input[type="text"], input[type="number"] { padding: 6px; border: 1px solid var(--theme-sub-color); border-radius: 20px; background: white; font-family: var(--font-family); }
-        input[type="range"] { accent-color: var(--theme-color); cursor: pointer; vertical-align: middle; }
+        input[type="text"], input[type="number"] { padding: 6px; border: 1px solid var(--theme-color-2); border-radius: 20px; background: white; font-family: var(--font-family); }
+        input[type="range"] { accent-color: var(--theme-color-1); cursor: pointer; vertical-align: middle; }
 
         .file-input-label, button.primary, button.secondary, .delete-btn {
             border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: 700; font-size: 0.85rem; font-family: var(--font-family); transition: transform 0.1s;
         }
-        .file-input-label { background: linear-gradient(45deg, var(--theme-color) 0%, var(--theme-sub-color) 100%); color: white; }
-        button.primary { background: linear-gradient(120deg, var(--theme-color) 0%, var(--theme-sub-color) 100%); color: white; }
+        /* ボタンやテーマ要素に2色グラデーションを適用 */
+        .file-input-label { background: linear-gradient(45deg, var(--theme-color-1) 0%, var(--theme-color-2) 100%); color: white; }
+        button.primary { background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%); color: white; }
         button.secondary { background: #e2e8f0; color: #4a5568; }
         .delete-btn { background: #feb2b2; color: #fff; }
         #bgFileInput { display: none; }
 
         .charts-container { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
         .chart-box { background: none; border: none; box-shadow: none; padding: 10px; text-align: center; flex: 1; min-width: 280px; text-shadow: 0 0 8px white, 0 0 8px white; }
-        .chart-box h3 { font-weight: 800; font-size: 1.1rem; color: var(--theme-color); margin-top: 0; }
+        .chart-box h3 { font-weight: 800; font-size: 1.1rem; color: var(--theme-color-1); margin-top: 0; }
         .chart-box canvas { max-height: 200px; }
         
         .schedule-edit-container { background: rgba(255, 255, 255, 0.4); padding: 10px; border-radius: 12px; margin-bottom: 15px; }
         .schedule-edit-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; background: rgba(255,255,255,0.7); padding: 5px 10px; border-radius: 10px; }
 
         .todo-section { background: none; border: none; box-shadow: none; padding: 10px; text-shadow: 0 0 8px white, 0 0 8px white; }
-        .todo-section h3 { font-weight: 800; color: var(--theme-color); margin-top: 0; }
-        .meter-container { background: rgba(255, 255, 255, 0.5); border-radius: 20px; height: 18px; width: 100%; margin-bottom: 15px; position: relative; overflow: hidden; border: 1px solid var(--theme-sub-color); }
-        .meter-bar { background: linear-gradient(90deg, var(--theme-color) 0%, var(--theme-sub-color) 100%); height: 100%; width: 0%; transition: width 0.3s; }
-        .meter-text { position: absolute; right: 10px; top: 0; font-size: 0.8rem; line-height: 18px; font-weight: bold; color: var(--theme-color); }
-        .todo-item { display: flex; align-items: center; padding: 8px 12px; margin-bottom: 6px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; background-color: rgba(255, 255, 255, 0.6); border: 1px solid var(--theme-sub-color); backdrop-filter: blur(2px); text-shadow: none; }
+        .todo-section h3 { font-weight: 800; color: var(--theme-color-1); margin-top: 0; }
+        .meter-container { background: rgba(255, 255, 255, 0.5); border-radius: 20px; height: 18px; width: 100%; margin-bottom: 15px; position: relative; overflow: hidden; border: 1px solid var(--theme-color-2); }
+        .meter-bar { background: linear-gradient(90deg, var(--theme-color-1) 0%, var(--theme-color-2) 100%); height: 100%; width: 0%; transition: width 0.3s; }
+        .meter-text { position: absolute; right: 10px; top: 0; font-size: 0.8rem; line-height: 18px; font-weight: bold; color: var(--theme-color-1); }
+        .todo-item { display: flex; align-items: center; padding: 8px 12px; margin-bottom: 6px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; background-color: rgba(255, 255, 255, 0.6); border: 1px solid var(--theme-color-2); backdrop-filter: blur(2px); text-shadow: none; }
         .todo-item.completed { background-color: rgba(235, 248, 255, 0.6); border: 1px solid #9ae6b4; text-decoration: line-through; color: #a0aec0; }
-        .todo-item input { margin-right: 12px; transform: scale(1.3); accent-color: var(--theme-color); }
+        .todo-item input { margin-right: 12px; transform: scale(1.3); accent-color: var(--theme-color-1); }
     </style>
 </head>
 <body>
@@ -107,21 +109,26 @@
         <div class="config-title" onclick="toggleConfig()">🛠️ アプリのカスタム（ここをタップ！）</div>
         <div class="config-content">
             
+            <p><strong>【🎨 アプリのテーマカラー（2色グラデーション）】</strong></p>
+            <div class="config-row">
+                <label>カラー1: <input type="color" id="themeColorPicker1" value="#ff9a9e" onchange="changeThemeColors(this.value, null)"></label>
+                <label>カラー2: <input type="color" id="themeColorPicker2" value="#fad0c4" onchange="changeThemeColors(null, this.value)"></label>
+                <button class="secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="resetThemeColors()">初期色に戻す</button>
+            </div>
+            <hr style="border:0; border-top:1px dashed #cbd5e0; margin:10px 0;">
+
             <p><strong>【🔆 壁紙の明るさ調整】</strong></p>
             <div class="config-row">
                 <span>うすく</span>
                 <input type="range" id="opacitySlider" min="10" max="100" value="100" oninput="changeBgOpacity(this.value)">
                 <span>くっきり</span>
-                <span style="margin-left: 10px; font-weight: bold; color: var(--theme-color);" id="opacityPercent">100%</span>
+                <span style="margin-left: 10px; font-weight: bold; color: var(--theme-color-1);" id="opacityPercent">100%</span>
             </div>
             <hr style="border:0; border-top:1px dashed #cbd5e0; margin:10px 0;">
 
-            <p><strong>【マイデザインカスタム】</strong></p>
+            <p><strong>【マイ壁紙カスタム】</strong></p>
             <div class="config-row">
                 <label>ベース背景色: <input type="color" id="bgColorPicker" value="#ffeef0" onchange="changeBgColor(this.value)"></label>
-                <label>✨UIテーマカラー: <input type="color" id="themeColorPicker" value="#ff9a9e" onchange="changeThemeColor(this.value)"></label>
-            </div>
-            <div class="config-row" style="margin-top: 5px;">
                 <label for="bgFileInput" class="file-input-label">📁 画像ファイルを選択</label>
                 <input type="file" id="bgFileInput" accept="image/*" onchange="applyLocalBgImage(this)">
                 <button class="delete-btn" onclick="clearBgImage()">壁紙を消去</button>
@@ -208,6 +215,26 @@
 
     let realChart, idealChart;
 
+    // ★テーマカラー変更システム
+    function changeThemeColors(c1, c2) {
+        if (c1) {
+            document.documentElement.style.setProperty('--theme-color-1', c1);
+            localStorage.setItem('themeColor1', c1);
+        }
+        if (c2) {
+            document.documentElement.style.setProperty('--theme-color-2', c2);
+            localStorage.setItem('themeColor2', c2);
+        }
+        // グラフの文字色などの更新用
+        if (realChart && idealChart) updateCharts();
+    }
+
+    function resetThemeColors() {
+        document.getElementById('themeColorPicker1').value = '#ff9a9e';
+        document.getElementById('themeColorPicker2').value = '#fad0c4';
+        changeThemeColors('#ff9a9e', '#fad0c4');
+    }
+
     function changeBgOpacity(val) {
         document.documentElement.style.setProperty('--bg-opacity', val / 100);
         document.getElementById('opacityPercent').innerText = val + '%';
@@ -230,15 +257,6 @@
         localStorage.setItem('customBgColor', color);
     }
 
-    // ★UIテーマカラー変更用ロジック（明度を少し下げたサブカラーを自動生成）
-    function changeThemeColor(color) {
-        document.documentElement.style.setProperty('--theme-color', color);
-        // サブカラーとして、少し透明度のある同色をセット（グラデーション用）
-        document.documentElement.style.setProperty('--theme-sub-color', color + "88");
-        localStorage.setItem('customThemeMainColor', color);
-        if(realChart && idealChart) updateCharts();
-    }
-
     function applyLocalBgImage(input) {
         const file = input.files[0];
         if (file) {
@@ -251,6 +269,7 @@
         }
     }
 
+    // 壁紙消去
     function clearBgImage() {
         document.getElementById('bgLayer').style.backgroundImage = 'none';
         document.getElementById('bgFileInput').value = '';
@@ -305,21 +324,25 @@
     }
 
     function updateFixedTime(val) { fixedTime = Number(val); localStorage.setItem('customFixedTime', fixedTime); saveAndRefresh(); }
+    
     function updateItemHours(type, index, val) {
         if(type === 'real') realSchedule[index].hours = Number(val);
         if(type === 'ideal') idealSchedule[index].hours = Number(val);
         saveAndRefresh();
     }
+    
     function updateItemColor(type, index, color) {
         if(type === 'real') realSchedule[index].color = color;
         if(type === 'ideal') idealSchedule[index].color = color;
         saveAndRefresh();
     }
+    
     function deleteScheduleItem(type, index) {
         if(type === 'real') realSchedule.splice(index, 1);
         if(type === 'ideal') idealSchedule.splice(index, 1);
         saveAndRefresh();
     }
+    
     function addScheduleItem(type) {
         const nameInput = document.getElementById(type === 'real' ? 'newRealName' : 'newIdealName');
         const hoursInput = document.getElementById(type === 'real' ? 'newRealHours' : 'newIdealHours');
@@ -356,8 +379,9 @@
 
     function updateCharts() {
         if(!realChart || !idealChart) return;
+        const currentThemeColor1 = getComputedStyle(document.documentElement).getPropertyValue('--theme-color-1').trim();
 
-        // 現実グラフ
+        // 現実グラフの更新
         const realLabels = ['固定時間（生活ベース）'];
         const realData = [fixedTime];
         const realColors = ['#cbd5e0'];
@@ -369,9 +393,10 @@
         realChart.data.labels = realLabels;
         realChart.data.datasets[0].data = realData;
         realChart.data.datasets[0].backgroundColor = realColors;
+        realChart.options.plugins.legend.labels.color = '#000';
         realChart.update();
 
-        // 理想グラフ
+        // 理想グラフの更新
         const idealLabels = ['固定時間（生活ベース）'];
         const idealData = [fixedTime];
         const idealColors = ['#cbd5e0'];
@@ -383,7 +408,11 @@
         idealChart.data.labels = idealLabels;
         idealChart.data.datasets[0].data = idealData;
         idealChart.data.datasets[0].backgroundColor = idealColors;
+        idealChart.options.plugins.legend.labels.color = '#000';
         idealChart.update();
+        
+        // グラフのタイトル色変更対応
+        document.querySelectorAll('.chart-box h3').forEach(el => el.style.color = currentThemeColor1);
     }
 
     function initCharts() {
@@ -436,15 +465,15 @@
     }
     function saveAndRender() { localStorage.setItem('todos', JSON.stringify(todos)); renderTodoList(); }
 
-    // ロード処理
+    // ロード処理（保存されたカラーの復元含む）
+    const savedColor1 = localStorage.getItem('themeColor1');
+    const savedColor2 = localStorage.getItem('themeColor2');
+    if (savedColor1) document.getElementById('themeColorPicker1').value = savedColor1;
+    if (savedColor2) document.getElementById('themeColorPicker2').value = savedColor2;
+    changeThemeColors(savedColor1, savedColor2);
+
     const savedBgColor = localStorage.getItem('customBgColor');
     if (savedBgColor) { document.body.style.backgroundColor = savedBgColor; document.getElementById('bgColorPicker').value = savedBgColor; }
-    
-    // UIテーマカラーのロード
-    const savedThemeColor = localStorage.getItem('customThemeMainColor') || '#ff9a9e';
-    document.getElementById('themeColorPicker').value = savedThemeColor;
-    changeThemeColor(savedThemeColor);
-
     const savedLocalImg = localStorage.getItem('customBgLocalImg');
     if (savedLocalImg) document.getElementById('bgLayer').style.backgroundImage = `url('${savedLocalImg}')`;
     const savedOpacity = localStorage.getItem('customBgOpacity') || '100';
