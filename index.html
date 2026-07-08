@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タイムマネジメント・カスタムアプリ（現実ログ機能付き）</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-family: 'M PLUS Rounded 1c', sans-serif;
+            --theme-color: #ff9a9e; 
+            --theme-sub-color: #fad0c4;
+            --main-text-color: #4a4a4a;
+            --bg-opacity: 1.0; 
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: #ffeef0;
+            color: var(--main-text-color);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .bg-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-size: cover; background-position: center; background-attachment: fixed;
+            opacity: var(--bg-opacity); z-index: -1; transition: opacity 0.2s ease;
+        }
+
+        .container {
+            max-width: 1000px; width: 100%;
+            background: rgba(255, 255, 255, 0.05); 
+            border-radius: 20px; padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); 
+            box-sizing: border-box;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-area {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px dashed var(--theme-color); padding-bottom: 10px; margin-bottom: 15px;
+            text-shadow: 0 0 10px white, 0 0 10px white;
+        }
+        #clock { font-size: 2.2rem; font-weight: 800; color: var(--theme-color); }
+        
+        .config-section {
+            background: rgba(255, 255, 255, 0.85); padding: 15px; border-radius: 15px; margin-bottom: 15px;
+            border: 1px solid var(--theme-sub-color); text-shadow: none;
+        }
+        .config-title { font-weight: 800; color: var(--theme-color); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .config-title::after { content: '▼'; font-size: 0.8rem; transition: transform 0.3s; }
+        .config-section.open .config-title::after { transform: rotate(180deg); }
+        .config-content { display: none; padding-top: 15px; }
+        .config-section.open .config-content { display: block; }
+
+        .config-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; }
+        input[type="text"], input[type="number"] { padding: 6px; border: 1px solid var(--theme-sub-color); border-radius: 20px; background: white; font-family: var(--font-family); }
+        input[type="range"] { accent-color: var(--theme-color); cursor: pointer; vertical-align: middle; }
+
+        .file-input-label, button.primary, button.secondary, .delete-btn {
+            border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: 700; font-size: 0.85rem; font-family: var(--font-family); transition: transform 0.1s;
+        }
+        .file-input-label { background: linear-gradient(45deg, var(--theme-color) 0%, var(--theme-sub-color) 100%); color: white; }
+        button.primary { background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%); color: white; }
+        button.secondary { background: #e2e8f0; color: #4a5568; }
+        .delete-btn { background: #feb2b2; color: #fff; }
+        #bgFileInput { display: none; }
+
+        .charts-container { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
+        .chart-box { background: none; border: none; box-shadow: none; padding: 10px; text-align: center; flex: 1; min-width: 280px; text-shadow: 0 0 8px white, 0 0 8px white; }
+        .chart-box h3 { font-weight: 800; font-size: 1.1rem; color: var(--theme-color); margin-top: 0; }
+        .chart-box canvas { max-height: 200px; }
+        
+        .schedule-edit-container { background: rgba(255, 255, 255, 0.4); padding: 10px; border-radius: 12px; margin-bottom: 15px; }
+        .schedule-edit-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; background: rgba(255,255,255,0.7); padding: 5px 10px; border-radius: 10px; }
+
+        .todo-section { background: none; border: none; box-shadow: none; padding: 10px; text-shadow: 0 0 8px white, 0 0 8px white; }
+        .todo-section h3 { font-weight: 800; color: var(--theme-color); margin-top: 0; }
+        .meter-container { background: rgba(255, 255, 255, 0.5); border-radius: 20px; height: 18px; width: 100%; margin-bottom: 15px; position: relative; overflow: hidden; border: 1px solid var(--theme-sub-color); }
+        .meter-bar { background: linear-gradient(90deg, var(--theme-color) 0%, var(--theme-sub-color) 100%); height: 100%; width: 0%; transition: width 0.3s; }
+        .meter-text { position: absolute; right: 10px; top: 0; font-size: 0.8rem; line-height: 18px; font-weight: bold; color: var(--theme-color); }
+        .todo-item { display: flex; align-items: center; padding: 8px 12px; margin-bottom: 6px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; background-color: rgba(255, 255, 255, 0.6); border: 1px solid var(--theme-sub-color); backdrop-filter: blur(2px); text-shadow: none; }
+        .todo-item.completed { background-color: rgba(235, 248, 255, 0.6); border: 1px solid #9ae6b4; text-decoration: line-through; color: #a0aec0; }
+        .todo-item input { margin-right: 12px; transform: scale(1.3); accent-color: var(--theme-color); }
+    </style>
+</head>
+<body>
+
+<div class="bg-layer" id="bgLayer"></div>
+
+<div class="container">
+    <div class="header-area">
+        <div id="clock">00:00:00</div>
+        <div style="font-size:0.9rem; font-weight:700;">⏳ 24時まで残り: <span id="time-left">--時間--分</span></div>
+    </div>
+
+    <div class="config-section" id="configSection">
+        <div class="config-title" onclick="toggleConfig()">🛠️ アプリのカスタム（ここをタップ！）</div>
+        <div class="config-content">
+            
+            <p><strong>【🔆 壁紙の明るさ調整】</strong></p>
+            <div class="config-row">
+                <span>うすく</span>
+                <input type="range" id="opacitySlider" min="10" max="100" value="100" oninput="changeBgOpacity(this.value)">
+                <span>くっきり</span>
+                <span style="margin-left: 10px; font-weight: bold; color: var(--theme-color);" id="opacityPercent">100%</span>
+            </div>
+            <hr style="border:0; border-top:1px dashed #cbd5e0; margin:10px 0;">
+
+            <p><strong>【マイ壁紙カスタム】</strong></p>
+            <div class="config-row">
+                <label>ベース背景色: <input type="color" id="bgColorPicker" value="#ffeef0" onchange="changeBgColor(this.value)"></label>
+                <label for="bgFileInput" class="file-input-label">📁 画像ファイルを選択</label>
+                <input type="file" id="bgFileInput" accept="image/*" onchange="applyLocalBgImage(this)">
+                <button class="delete-btn" onclick="clearBgImage()">壁紙を消去</button>
+            </div>
+            <hr style="border:0; border-top:1px dashed #cbd5e0; margin:10px 0;">
+
+            <p><strong>【共通の固定時間】</strong></p>
+            <div class="config-row">
+                <label>固定時間(睡眠・学校・食事・入浴など/グレー固定): <input type="number" id="inputFixedTime" value="18" style="width:45px;" onchange="updateFixedTime(this.value)"> 時間</label>
+            </div>
+            <hr style="border:0; border-top:1px dashed #cbd5e0; margin:10px 0;">
+
+            <p><strong>【📊 現実（過去のログ）のスケジュール編集】</strong></p>
+            <div class="schedule-edit-container">
+                <div id="realCustomList"></div>
+                <p style="font-size: 0.85rem; color: #718096; margin: 5px 0 0 0;">➕ 現実の項目を増やす：</p>
+                <div class="config-row">
+                    <input type="text" id="newRealName" placeholder="項目名（例：スマホ）" style="width: 130px;">
+                    <input type="number" id="newRealHours" value="1" style="width: 40px;"> 時間
+                    色: <input type="color" id="newRealColor" value="#8fd3f4">
+                    <button class="primary" onclick="addScheduleItem('real')">追加</button>
+                </div>
+                <div id="realTotalAlert" style="color: red; font-weight: bold; font-size: 0.85rem; margin-top: 5px;"></div>
+            </div>
+
+            <p><strong>【✨ 理想のスケジュール編集】</strong></p>
+            <div class="schedule-edit-container">
+                <div id="idealCustomList"></div>
+                <p style="font-size: 0.85rem; color: #718096; margin: 5px 0 0 0;">➕ 理想の項目を増やす：</p>
+                <div class="config-row">
+                    <input type="text" id="newIdealName" placeholder="項目名（例：自習）" style="width: 130px;">
+                    <input type="number" id="newIdealHours" value="1" style="width: 40px;"> 時間
+                    色: <input type="color" id="newIdealColor" value="#b794f4">
+                    <button class="primary" onclick="addScheduleItem('ideal')">追加</button>
+                </div>
+                <div id="idealTotalAlert" style="color: red; font-weight: bold; font-size: 0.85rem; margin-top: 5px;"></div>
+            </div>
+            
+            <hr style="border:0; border-top:1px dashed #cbd5e0; margin:15px 0;">
+            
+            <p><strong>【ToDoの追加】</strong></p>
+            <div class="config-row">
+                <input type="text" id="newTodoText" placeholder="やることを入力" style="flex:1;">
+                <input type="number" id="newTodoPts" value="10" style="width:50px;">
+                <button class="primary" onclick="addTodo()">追加</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-box">
+            <h3>現実のスケジュール</h3>
+            <canvas id="realChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>理想のスケジュール</h3>
+            <canvas id="idealChart"></canvas>
+        </div>
+    </div>
+
+    <div class="todo-section">
+        <h3>今日のToDo（チェックでポイント獲得！）</h3>
+        <div class="meter-container">
+            <div class="meter-bar" id="meterBar"></div>
+            <div class="meter-text" id="meterText">達成率: 0% (0 Pt)</div>
+        </div>
+        <div id="todoList"></div>
+    </div>
+</div>
+
+<script>
+    // データ管理（現実と理想を分ける）
+    let fixedTime = Number(localStorage.getItem('customFixedTime')) || 18;
+    
+    let realSchedule = JSON.parse(localStorage.getItem('realScheduleData')) || [
+        { name: 'スマホポチポチ', hours: 4, color: '#ff0033' },
+        { name: 'だらだらした時間', hours: 2, color: '#e2e8f0' }
+    ];
+
+    let idealSchedule = JSON.parse(localStorage.getItem('idealScheduleData2')) || [
+        { name: 'スマホ時間', hours: 1, color: '#ff0033' },
+        { name: '目標のための時間', hours: 5, color: '#b794f4' }
+    ];
+
+    let realChart, idealChart;
+
+    function changeBgOpacity(val) {
+        document.documentElement.style.setProperty('--bg-opacity', val / 100);
+        document.getElementById('opacityPercent').innerText = val + '%';
+        localStorage.setItem('customBgOpacity', val);
+    }
+
+    function toggleConfig() { document.getElementById('configSection').classList.toggle('open'); }
+
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toLocaleTimeString();
+        const midnight = new Date(); midnight.setHours(24, 0, 0, 0);
+        const diffMs = midnight - now;
+        document.getElementById('time-left').innerText = `${Math.floor(diffMs / (1000 * 60 * 60))}時間 ${Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))}分`;
+    }
+    setInterval(updateClock, 1000); updateClock();
+
+    function changeBgColor(color) {
+        document.body.style.backgroundColor = color;
+        localStorage.setItem('customBgColor', color);
+    }
+
+    function applyLocalBgImage(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('bgLayer').style.backgroundImage = `url('${e.target.result}')`;
+                try { localStorage.setItem('customBgLocalImg', e.target.result); } catch (e) { alert("画像が大きすぎます"); }
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function clearBgImage() {
+        document.getElementById('bgLayer').style.backgroundImage = 'none';
+        document.getElementById('bgFileInput').value = '';
+        localStorage.removeItem('customBgLocalImg');
+    }
+
+    // エディターの描画
+    function renderEditors() {
+        document.getElementById('inputFixedTime').value = fixedTime;
+        
+        // 現実リスト
+        const realContainer = document.getElementById('realCustomList');
+        realContainer.innerHTML = '';
+        realSchedule.forEach((item, index) => {
+            // ★スマホ検知処理
+            const isSmartphone = item.name.includes('スマホ');
+            const colorInput = isSmartphone 
+                ? `<span style="color:#ff0033; font-weight:800;">🔴赤固定</span>`
+                : `色: <input type="color" value="${item.color}" onchange="updateItemColor('real', ${index}, this.value)">`;
+
+            const div = document.createElement('div');
+            div.className = 'schedule-edit-item';
+            div.innerHTML = `
+                <span style="font-weight:bold; flex:1;">${item.name}</span>
+                <input type="number" value="${item.hours}" style="width:40px;" onchange="updateItemHours('real', ${index}, this.value)"> 時間
+                ${colorInput}
+                <button class="delete-btn" style="padding:2px 8px;" onclick="deleteScheduleItem('real', ${index})">削除</button>
+            `;
+            realContainer.appendChild(div);
+        });
+
+        // 理想リスト
+        const idealContainer = document.getElementById('idealCustomList');
+        idealContainer.innerHTML = '';
+        idealSchedule.forEach((item, index) => {
+            // ★スマホ検知処理
+            const isSmartphone = item.name.includes('スマホ');
+            const colorInput = isSmartphone 
+                ? `<span style="color:#ff0033; font-weight:800;">🔴赤固定</span>`
+                : `色: <input type="color" value="${item.color}" onchange="updateItemColor('ideal', ${index}, this.value)">`;
+
+            const div = document.createElement('div');
+            div.className = 'schedule-edit-item';
+            div.innerHTML = `
+                <span style="font-weight:bold; flex:1;">${item.name}</span>
+                <input type="number" value="${item.hours}" style="width:40px;" onchange="updateItemHours('ideal', ${index}, this.value)"> 時間
+                ${colorInput}
+                <button class="delete-btn" style="padding:2px 8px;" onclick="deleteScheduleItem('ideal', ${index})">削除</button>
+            `;
+            idealContainer.appendChild(div);
+        });
+
+        checkTotalHours();
+    }
+
+    function updateFixedTime(val) { fixedTime = Number(val); localStorage.setItem('customFixedTime', fixedTime); saveAndRefresh(); }
+    
+    function updateItemHours(type, index, val) {
+        if(type === 'real') realSchedule[index].hours = Number(val);
+        if(type === 'ideal') idealSchedule[index].hours = Number(val);
+        saveAndRefresh();
+    }
+    
+    function updateItemColor(type, index, color) {
+        if(type === 'real') realSchedule[index].color = color;
+        if(type === 'ideal') idealSchedule[index].color = color;
+        saveAndRefresh();
+    }
+    
+    function deleteScheduleItem(type, index) {
+        if(type === 'real') realSchedule.splice(index, 1);
+        if(type === 'ideal') idealSchedule.splice(index, 1);
+        saveAndRefresh();
+    }
+    
+    function addScheduleItem(type) {
+        const nameInput = document.getElementById(type === 'real' ? 'newRealName' : 'newIdealName');
+        const hoursInput = document.getElementById(type === 'real' ? 'newRealHours' : 'newIdealHours');
+        const colorInput = document.getElementById(type === 'real' ? 'newRealColor' : 'newIdealColor');
+        
+        let name = nameInput.value;
+        let hours = Number(hoursInput.value);
+        let color = colorInput.value;
+        
+        if(!name) return;
+        
+        // ★スマホが含まれる場合は強制で赤に変更
+        if(name.includes('スマホ')) {
+            color = '#ff0033';
+        }
+
+        if(type === 'real') realSchedule.push({ name: name, hours: hours, color: color });
+        if(type === 'ideal') idealSchedule.push({ name: name, hours: hours, color: color });
+        
+        nameInput.value = '';
+        saveAndRefresh();
+    }
+
+    function saveAndRefresh() {
+        localStorage.setItem('realScheduleData', JSON.stringify(realSchedule));
+        localStorage.setItem('idealScheduleData2', JSON.stringify(idealSchedule));
+        renderEditors();
+        updateCharts();
+    }
+
+    function checkTotalHours() {
+        let realTotal = fixedTime + realSchedule.reduce((sum, item) => sum + item.hours, 0);
+        let idealTotal = fixedTime + idealSchedule.reduce((sum, item) => sum + item.hours, 0);
+        
+        document.getElementById('realTotalAlert').innerText = realTotal !== 24 ? `⚠️ 現実の合計が ${realTotal} 時間です（24に調整してね）` : '✅ 24時間ピッタリです！';
+        document.getElementById('idealTotalAlert').innerText = idealTotal !== 24 ? `⚠️ 理想の合計が ${idealTotal} 時間です（24に調整してね）` : '✅ 24時間ピッタリです！';
+    }
+
+    function updateCharts() {
+        if(!realChart || !idealChart) return;
+
+        // 現実グラフの更新
+        const realLabels = ['固定時間（生活ベース）'];
+        const realData = [fixedTime];
+        const realColors = ['#cbd5e0'];
+        realSchedule.forEach(item => {
+            realLabels.push(item.name);
+            realData.push(item.hours);
+            // スマホ検知
+            realColors.push(item.name.includes('スマホ') ? '#ff0033' : item.color);
+        });
+        realChart.data.labels = realLabels;
+        realChart.data.datasets[0].data = realData;
+        realChart.data.datasets[0].backgroundColor = realColors;
+        realChart.update();
+
+        // 理想グラフの更新
+        const idealLabels = ['固定時間（生活ベース）'];
+        const idealData = [fixedTime];
+        const idealColors = ['#cbd5e0'];
+        idealSchedule.forEach(item => {
+            idealLabels.push(item.name);
+            idealData.push(item.hours);
+            // スマホ検知
+            idealColors.push(item.name.includes('スマホ') ? '#ff0033' : item.color);
+        });
+        idealChart.data.labels = idealLabels;
+        idealChart.data.datasets[0].data = idealData;
+        idealChart.data.datasets[0].backgroundColor = idealColors;
+        idealChart.update();
+    }
+
+    function initCharts() {
+        Chart.defaults.font.family = "'M PLUS Rounded 1c', sans-serif";
+
+        realChart = new Chart(document.getElementById('realChart').getContext('2d'), {
+            type: 'doughnut',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+            options: { plugins: { legend: { labels: { color: '#000', textShadow: '0 0 10px #fff' } } } }
+        });
+
+        idealChart = new Chart(document.getElementById('idealChart').getContext('2d'), {
+            type: 'doughnut',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+            options: { plugins: { legend: { labels: { color: '#000', textShadow: '0 0 10px #fff' } } } }
+        });
+        updateCharts();
+    }
+
+    // ToDo管理
+    let todos = JSON.parse(localStorage.getItem('todos')) || [{ text: '今日クリアしたいタスク', completed: false, pts: 10 }];
+    function renderTodoList() {
+        const listContainer = document.getElementById('todoList');
+        listContainer.innerHTML = '';
+        let totalPts = 0, earnedPts = 0, completedCount = 0;
+        todos.forEach((todo, index) => {
+            totalPts += todo.pts; if(todo.completed) earnedPts += todo.pts;
+            const itemDiv = document.createElement('div');
+            itemDiv.className = `todo-item ${todo.completed ? 'completed' : 'uncompleted'}`;
+            const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = todo.completed;
+            checkbox.onclick = () => { todos[index].completed = !todos[index].completed; saveAndRender(); };
+            const label = document.createElement('span'); label.innerText = `${todo.text} (${todo.pts}点)`;
+            const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-btn'; deleteBtn.innerText = '削除';
+            deleteBtn.onclick = () => { todos.splice(index, 1); saveAndRender(); };
+            itemDiv.appendChild(checkbox); itemDiv.appendChild(label); itemDiv.appendChild(deleteBtn);
+            listContainer.appendChild(itemDiv);
+            if(todo.completed) completedCount++;
+        });
+        const percent = todos.length ? Math.round((completedCount / todos.length) * 100) : 0;
+        document.getElementById('meterBar').style.width = `${percent}%`;
+        document.getElementById('meterText').innerText = `達成率: ${percent}% (${earnedPts} / ${totalPts} Pt)`;
+    }
+    function addTodo() {
+        const text = document.getElementById('newTodoText').value;
+        const pts = Number(document.getElementById('newTodoPts').value);
+        if(!text) return;
+        todos.push({ text: text, completed: false, pts: pts });
+        document.getElementById('newTodoText').value = '';
+        saveAndRender();
+    }
+    function saveAndRender() { localStorage.setItem('todos', JSON.stringify(todos)); renderTodoList(); }
+
+    // ロード処理
+    const savedBgColor = localStorage.getItem('customBgColor');
+    if (savedBgColor) { document.body.style.backgroundColor = savedBgColor; document.getElementById('bgColorPicker').value = savedBgColor; }
+    const savedLocalImg = localStorage.getItem('customBgLocalImg');
+    if (savedLocalImg) document.getElementById('bgLayer').style.backgroundImage = `url('${savedLocalImg}')`;
+    const savedOpacity = localStorage.getItem('customBgOpacity') || '100';
+    document.getElementById('opacitySlider').value = savedOpacity;
+    changeBgOpacity(savedOpacity);
+
+    initCharts();
+    renderEditors();
+    renderTodoList();
+</script>
+</body>
+</html>
