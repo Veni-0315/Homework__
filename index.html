@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タイムマネジメント・カスタムアプリ（現実ログ機能付き）</title>
+    <title>タイムマネジメント・カスタムアプリ</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
@@ -70,7 +70,7 @@
             border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: 700; font-size: 0.85rem; font-family: var(--font-family); transition: transform 0.1s;
         }
         .file-input-label { background: linear-gradient(45deg, var(--theme-color) 0%, var(--theme-sub-color) 100%); color: white; }
-        button.primary { background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%); color: white; }
+        button.primary { background: linear-gradient(120deg, var(--theme-color) 0%, var(--theme-sub-color) 100%); color: white; }
         button.secondary { background: #e2e8f0; color: #4a5568; }
         .delete-btn { background: #feb2b2; color: #fff; }
         #bgFileInput { display: none; }
@@ -116,9 +116,12 @@
             </div>
             <hr style="border:0; border-top:1px dashed #cbd5e0; margin:10px 0;">
 
-            <p><strong>【マイ壁紙カスタム】</strong></p>
+            <p><strong>【マイデザインカスタム】</strong></p>
             <div class="config-row">
                 <label>ベース背景色: <input type="color" id="bgColorPicker" value="#ffeef0" onchange="changeBgColor(this.value)"></label>
+                <label>✨UIテーマカラー: <input type="color" id="themeColorPicker" value="#ff9a9e" onchange="changeThemeColor(this.value)"></label>
+            </div>
+            <div class="config-row" style="margin-top: 5px;">
                 <label for="bgFileInput" class="file-input-label">📁 画像ファイルを選択</label>
                 <input type="file" id="bgFileInput" accept="image/*" onchange="applyLocalBgImage(this)">
                 <button class="delete-btn" onclick="clearBgImage()">壁紙を消去</button>
@@ -190,7 +193,7 @@
 </div>
 
 <script>
-    // データ管理（現実と理想を分ける）
+    // データ管理
     let fixedTime = Number(localStorage.getItem('customFixedTime')) || 18;
     
     let realSchedule = JSON.parse(localStorage.getItem('realScheduleData')) || [
@@ -227,6 +230,15 @@
         localStorage.setItem('customBgColor', color);
     }
 
+    // ★UIテーマカラー変更用ロジック（明度を少し下げたサブカラーを自動生成）
+    function changeThemeColor(color) {
+        document.documentElement.style.setProperty('--theme-color', color);
+        // サブカラーとして、少し透明度のある同色をセット（グラデーション用）
+        document.documentElement.style.setProperty('--theme-sub-color', color + "88");
+        localStorage.setItem('customThemeMainColor', color);
+        if(realChart && idealChart) updateCharts();
+    }
+
     function applyLocalBgImage(input) {
         const file = input.files[0];
         if (file) {
@@ -253,7 +265,6 @@
         const realContainer = document.getElementById('realCustomList');
         realContainer.innerHTML = '';
         realSchedule.forEach((item, index) => {
-            // ★スマホ検知処理
             const isSmartphone = item.name.includes('スマホ');
             const colorInput = isSmartphone 
                 ? `<span style="color:#ff0033; font-weight:800;">🔴赤固定</span>`
@@ -274,7 +285,6 @@
         const idealContainer = document.getElementById('idealCustomList');
         idealContainer.innerHTML = '';
         idealSchedule.forEach((item, index) => {
-            // ★スマホ検知処理
             const isSmartphone = item.name.includes('スマホ');
             const colorInput = isSmartphone 
                 ? `<span style="color:#ff0033; font-weight:800;">🔴赤固定</span>`
@@ -295,25 +305,21 @@
     }
 
     function updateFixedTime(val) { fixedTime = Number(val); localStorage.setItem('customFixedTime', fixedTime); saveAndRefresh(); }
-    
     function updateItemHours(type, index, val) {
         if(type === 'real') realSchedule[index].hours = Number(val);
         if(type === 'ideal') idealSchedule[index].hours = Number(val);
         saveAndRefresh();
     }
-    
     function updateItemColor(type, index, color) {
         if(type === 'real') realSchedule[index].color = color;
         if(type === 'ideal') idealSchedule[index].color = color;
         saveAndRefresh();
     }
-    
     function deleteScheduleItem(type, index) {
         if(type === 'real') realSchedule.splice(index, 1);
         if(type === 'ideal') idealSchedule.splice(index, 1);
         saveAndRefresh();
     }
-    
     function addScheduleItem(type) {
         const nameInput = document.getElementById(type === 'real' ? 'newRealName' : 'newIdealName');
         const hoursInput = document.getElementById(type === 'real' ? 'newRealHours' : 'newIdealHours');
@@ -324,11 +330,7 @@
         let color = colorInput.value;
         
         if(!name) return;
-        
-        // ★スマホが含まれる場合は強制で赤に変更
-        if(name.includes('スマホ')) {
-            color = '#ff0033';
-        }
+        if(name.includes('スマホ')) color = '#ff0033';
 
         if(type === 'real') realSchedule.push({ name: name, hours: hours, color: color });
         if(type === 'ideal') idealSchedule.push({ name: name, hours: hours, color: color });
@@ -355,14 +357,13 @@
     function updateCharts() {
         if(!realChart || !idealChart) return;
 
-        // 現実グラフの更新
+        // 現実グラフ
         const realLabels = ['固定時間（生活ベース）'];
         const realData = [fixedTime];
         const realColors = ['#cbd5e0'];
         realSchedule.forEach(item => {
             realLabels.push(item.name);
             realData.push(item.hours);
-            // スマホ検知
             realColors.push(item.name.includes('スマホ') ? '#ff0033' : item.color);
         });
         realChart.data.labels = realLabels;
@@ -370,14 +371,13 @@
         realChart.data.datasets[0].backgroundColor = realColors;
         realChart.update();
 
-        // 理想グラフの更新
+        // 理想グラフ
         const idealLabels = ['固定時間（生活ベース）'];
         const idealData = [fixedTime];
         const idealColors = ['#cbd5e0'];
         idealSchedule.forEach(item => {
             idealLabels.push(item.name);
             idealData.push(item.hours);
-            // スマホ検知
             idealColors.push(item.name.includes('スマホ') ? '#ff0033' : item.color);
         });
         idealChart.data.labels = idealLabels;
@@ -439,6 +439,12 @@
     // ロード処理
     const savedBgColor = localStorage.getItem('customBgColor');
     if (savedBgColor) { document.body.style.backgroundColor = savedBgColor; document.getElementById('bgColorPicker').value = savedBgColor; }
+    
+    // UIテーマカラーのロード
+    const savedThemeColor = localStorage.getItem('customThemeMainColor') || '#ff9a9e';
+    document.getElementById('themeColorPicker').value = savedThemeColor;
+    changeThemeColor(savedThemeColor);
+
     const savedLocalImg = localStorage.getItem('customBgLocalImg');
     if (savedLocalImg) document.getElementById('bgLayer').style.backgroundImage = `url('${savedLocalImg}')`;
     const savedOpacity = localStorage.getItem('customBgOpacity') || '100';
