@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タイムマネジメント・カスタムアプリ（フォント切替＆スマートToDo版）</title>
+    <title>タイムマネジメント・カスタムアプリ（フォント切替＆スマートToDo＆カウントダウン強調版）</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- フォントの読み込み設定 -->
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
@@ -48,10 +48,24 @@
 
         .header-area {
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px dashed var(--theme-color-1); padding-bottom: 10px; margin-bottom: 15px;
+            border-bottom: 2px dashed var(--theme-color-1); padding-bottom: 15px; margin-bottom: 15px;
             text-shadow: 0 0 10px white, 0 0 10px white;
+            flex-wrap: wrap; gap: 10px;
         }
         #clock { font-size: 2.2rem; font-weight: 800; color: var(--theme-color-1); }
+        
+        /* 🚨 カウントダウン強調スタイル */
+        .countdown-container {
+            font-size: 1.5rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, var(--theme-color-1), var(--theme-color-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0px 2px 2px rgba(255, 255, 255, 0.9)) drop-shadow(0px 0px 8px rgba(255, 255, 255, 0.8));
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
         
         .config-section {
             background: rgba(255, 255, 255, 0.85); padding: 15px; border-radius: 15px; margin-bottom: 15px;
@@ -124,7 +138,10 @@
 <div class="container">
     <div class="header-area">
         <div id="clock">00:00:00</div>
-        <div style="font-size:0.9rem; font-weight:700;">⏳ 24時まで残り: <span id="time-left">--時間--分</span></div>
+        <!-- 🚨 強調された残り時間表示 -->
+        <div class="countdown-container">
+            <span>⏳ 残り</span><span id="time-left">--時間--分</span>
+        </div>
     </div>
 
     <!-- 設定エリア -->
@@ -132,7 +149,7 @@
         <div class="config-title" onclick="toggleConfig()">🛠️ アプリのカスタム（ここをタップ！）</div>
         <div class="config-content">
             
-            <!-- 🆕 フォントファミリー切り替え -->
+            <!-- フォントファミリー切り替え -->
             <p><strong>【🔤 フォントの変更】</strong></p>
             <div class="config-row">
                 <label>お好みのフォント: 
@@ -268,17 +285,15 @@
 
     let realChart, idealChart;
 
-    // 🆕 フォント変更処理
+    // フォント変更処理
     function changeFontFamily(family) {
         document.documentElement.style.setProperty('--font-family', family);
         localStorage.setItem('customFontFamily', family);
         document.getElementById('fontSelect').value = family;
         
-        // フォント適用時、セレクトボックスやインプット自身のフォントも強制更新
         const inputs = document.querySelectorAll('input, select, button');
         inputs.forEach(el => el.style.fontFamily = family);
         
-        // グラフのフォント更新と再描画
         if (typeof Chart !== 'undefined' && realChart && idealChart) {
             Chart.defaults.font.family = family;
             realChart.options.plugins.legend.labels.font = { family: family };
@@ -349,7 +364,6 @@
     function renderEditors() {
         document.getElementById('inputFixedTime').value = fixedTime;
         
-        // 現実リスト
         const realContainer = document.getElementById('realCustomList');
         realContainer.innerHTML = '';
         realSchedule.forEach((item, index) => {
@@ -369,7 +383,6 @@
             realContainer.appendChild(div);
         });
 
-        // 理想リスト
         const idealContainer = document.getElementById('idealCustomList');
         idealContainer.innerHTML = '';
         idealSchedule.forEach((item, index) => {
@@ -483,7 +496,7 @@
     let todos = JSON.parse(localStorage.getItem('todos')) || [{ text: '今日の課題を終わらせる！', completed: false }];
     let weeklyScore = Number(localStorage.getItem('weeklyScore')) || 0;
 
-    // ToDoリストレンダリング（ゴミ箱🗑️ボタンにスマート化）
+    // ToDoリストレンダリング
     function renderTodoList() {
         const listContainer = document.getElementById('todoList');
         listContainer.innerHTML = '';
@@ -500,7 +513,6 @@
             label.className = 'todo-text-span';
             label.innerText = todo.text;
 
-            // 🗑️ボタンにアップデート
             const deleteBtn = document.createElement('button'); 
             deleteBtn.className = 'todo-trash-btn'; 
             deleteBtn.innerHTML = '🗑️';
