@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タイムマネジメント・カスタムアプリ（カウントダウン視認性特化版）</title>
+    <title>タイムマネジメント・カスタムアプリ</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- フォントの読み込み設定 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Noto+Sans+JP:wght@400;700;900&family=Noto+Serif+JP:wght@400;700;900&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -114,10 +114,42 @@
         .meter-bar { background: linear-gradient(90deg, var(--theme-color-1) 0%, var(--theme-color-2) 100%); height: 100%; width: 0%; transition: width 0.3s; }
         .meter-text { position: absolute; right: 10px; top: 0; font-size: 0.8rem; line-height: 18px; font-weight: bold; color: var(--theme-color-1); }
         
-        /* ToDoアイテムとスリム削除ボタンの調整 */
-        .todo-item { display: flex; align-items: center; padding: 8px 12px; margin-bottom: 6px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; background-color: rgba(255, 255, 255, 0.6); border: 1px solid var(--theme-color-2); backdrop-filter: blur(2px); text-shadow: none; }
-        .todo-item.completed { background-color: rgba(235, 248, 255, 0.6); border: 1px solid #9ae6b4; text-decoration: line-through; color: #a0aec0; }
-        .todo-item input { margin-right: 12px; transform: scale(1.3); accent-color: var(--theme-color-1); }
+        /* 🚨 ToDoアイテム全体のタップ領域拡大デザイン */
+        .todo-item { 
+            display: flex; 
+            align-items: center; 
+            padding: 12px 16px; /* 少しパディングを広げて押しやすく */
+            margin-bottom: 8px; 
+            border-radius: 20px; 
+            font-weight: bold; 
+            font-size: 0.95rem; 
+            background-color: rgba(255, 255, 255, 0.7); 
+            border: 1px solid var(--theme-color-2); 
+            backdrop-filter: blur(2px); 
+            text-shadow: none; 
+            cursor: pointer; /* マウスを乗せると指マークになる */
+            transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+            user-select: none; /* テキストの誤選択を防止 */
+        }
+        /* ホバー（ホールド）した時に少し浮き上がらせる */
+        .todo-item:hover {
+            transform: translateY(-2px);
+            background-color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+        .todo-item.completed { 
+            background-color: rgba(235, 248, 255, 0.7); 
+            border: 1px solid #9ae6b4; 
+            text-decoration: line-through; 
+            color: #a0aec0; 
+        }
+        .todo-item input { 
+            margin-right: 12px; 
+            transform: scale(1.3); 
+            accent-color: var(--theme-color-1); 
+            cursor: pointer;
+            pointer-events: none; /* チェックボックス単体のクリック判定を親（todo-item）に移譲 */
+        }
         .todo-text-span { flex: 1; text-align: left; }
         
         .todo-trash-btn {
@@ -141,18 +173,15 @@
 <div class="container">
     <div class="header-area">
         <div id="clock">00:00:00</div>
-        <!-- 🚨 強調された残り時間表示 -->
         <div class="countdown-container">
             <span>⏳ 残り</span><span id="time-left">--時間--分</span>
         </div>
     </div>
 
-    <!-- 設定エリア -->
     <div class="config-section" id="configSection">
         <div class="config-title" onclick="toggleConfig()">🛠️ アプリのカスタム（ここをタップ！）</div>
         <div class="config-content">
             
-            <!-- フォントファミリー切り替え -->
             <p><strong>【🔤 フォントの変更】</strong></p>
             <div class="config-row">
                 <label>お好みのフォント: 
@@ -166,7 +195,6 @@
             </div>
             <hr style="border:0; border-top:1px dashed #cbd5e0; margin:10px 0;">
 
-            <!-- テーマカラーカスタム -->
             <p><strong>【🎨 UIテーマカラー（2色グラデーション）カスタム】</strong></p>
             <div class="config-row">
                 <label>カラー1: <input type="color" id="themeColor1Picker" value="#ff9a9e" onchange="changeThemeColors(this.value, null)"></label>
@@ -199,7 +227,6 @@
             </div>
             <hr style="border:0; border-top:1px dashed #cbd5e0; margin:10px 0;">
 
-            <!-- 現実のスケジュール編集 -->
             <p><strong>【📊 現実（過去のログ）のスケジュール編集】</strong></p>
             <div class="schedule-edit-container">
                 <div id="realCustomList"></div>
@@ -213,7 +240,6 @@
                 <div id="realTotalAlert" style="color: red; font-weight: bold; font-size: 0.85rem; margin-top: 5px;"></div>
             </div>
 
-            <!-- 理想のスケジュール編集 -->
             <p><strong>【✨ 理想のスケジュール編集】</strong></p>
             <div class="schedule-edit-container">
                 <div id="idealCustomList"></div>
@@ -248,7 +274,6 @@
         </div>
     </div>
 
-    <!-- ToDoセクション -->
     <div class="todo-section">
         <h3>今日のToDo（全達成で100ポイント獲得！）</h3>
         <div class="meter-container">
@@ -257,9 +282,8 @@
         </div>
         <div id="todoList"></div>
 
-        <!-- 一週間のマックス700ポイント管理エリア -->
         <div class="weekly-stats">
-            <span class="weekly-title">📅 今週のポイント獲得ログ（MAX 700 Pt）</span>
+            <span class="weekly-title">📅 今週 of ポイント獲得ログ（MAX 700 Pt）</span>
             <div class="config-row" style="margin-bottom: 0;">
                 <button class="secondary" style="padding: 2px 8px; font-size: 0.75rem;" onclick="addTodayToWeekly()">今日の分のスコアを週計に記録</button>
                 <button class="delete-btn" style="padding: 2px 8px; font-size: 0.75rem;" onclick="clearWeeklyScore()">リセット</button>
@@ -498,6 +522,13 @@
 
     let todos = JSON.parse(localStorage.getItem('todos')) || [{ text: '今日の課題を終わらせる！', completed: false }];
     let weeklyScore = Number(localStorage.getItem('weeklyScore')) || 0;
+    let previousPercent = 0; // 🚨 全達成の瞬間を判定するための前回達成率記録用
+
+    // 🚨 ToDoアイテムの親要素タップ時にチェックを切り替える関数
+    function toggleTodoCompleted(index) {
+        todos[index].completed = !todos[index].completed;
+        saveAndRender();
+    }
 
     // ToDoリストレンダリング
     function renderTodoList() {
@@ -508,9 +539,16 @@
         todos.forEach((todo, index) => {
             const itemDiv = document.createElement('div');
             itemDiv.className = `todo-item ${todo.completed ? 'completed' : 'uncompleted'}`;
+            // 🚨 アイテム（白枠全体）がクリックされた時の処理
+            itemDiv.onclick = (e) => {
+                // 削除ボタンの「🗑️」部分をクリックした時はチェックを入れないようにする
+                if(e.target.closest('.todo-trash-btn')) return;
+                toggleTodoCompleted(index);
+            };
 
-            const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = todo.completed;
-            checkbox.onclick = () => { todos[index].completed = !todos[index].completed; saveAndRender(); };
+            const checkbox = document.createElement('input'); 
+            checkbox.type = 'checkbox'; 
+            checkbox.checked = todo.completed;
 
             const label = document.createElement('span'); 
             label.className = 'todo-text-span';
@@ -519,7 +557,11 @@
             const deleteBtn = document.createElement('button'); 
             deleteBtn.className = 'todo-trash-btn'; 
             deleteBtn.innerHTML = '🗑️';
-            deleteBtn.onclick = () => { todos.splice(index, 1); saveAndRender(); };
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation(); // クリックイベントが親のitemDivに伝播するのを防ぐ
+                todos.splice(index, 1); 
+                saveAndRender(); 
+            };
 
             itemDiv.appendChild(checkbox); itemDiv.appendChild(label); itemDiv.appendChild(deleteBtn);
             listContainer.appendChild(itemDiv);
@@ -530,9 +572,46 @@
         document.getElementById('meterBar').style.width = `${percent}%`;
         
         let todayPts = (percent === 100) ? 100 : 0;
-        document.getElementById('meterText').innerText = `達成率: ${percent}% (今日: ${todayPts} Pt)`;
         
+        // 🚨 メッセージを「全達成時」と「通常時」で出し分ける
+        if(percent === 100 && todos.length > 0) {
+            document.getElementById('meterText').innerText = `🎉 おめでとう！全達成！ (100 Pt)`;
+            
+            // 🚨 今回初めて100%になった瞬間だけ紙吹雪を降らせる演出
+            if (previousPercent < 100) {
+                triggerConfetti();
+            }
+        } else {
+            document.getElementById('meterText').innerText = `達成率: ${percent}% (今日: ${todayPts} Pt)`;
+        }
+        
+        previousPercent = percent; // 達成率の記録を更新
         document.getElementById('weeklyScoreText').innerText = `今週の合計: ${weeklyScore} / 700 Pt`;
+    }
+
+    // 🚨 紙吹雪をダイナミックに散らす演出関数
+    function triggerConfetti() {
+        // 左右から豪華に紙吹雪を打ち上げる
+        const duration = 2.5 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+        function randomInRange(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        const interval = setInterval(function() {
+            const timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+                return clearInterval(interval);
+            }
+
+            const particleCount = 50 * (timeLeft / duration);
+            // 画面の左下、右下から少し浮かせて打ち上げる
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
     }
 
     function addTodo() {
@@ -555,7 +634,7 @@
             weeklyScore += 100;
             localStorage.setItem('weeklyScore', weeklyScore);
             renderTodoList();
-            alert("100ポイントを今週 of ログに記録しました！この調子でがんばろ〜！");
+            alert("100ポイントを今週のログに記録しました！この調子でがんばろ〜！");
         } else {
             alert("まだ今日のタスクが100%完了していません！全部チェックがつくと記録できるよ！");
         }
@@ -587,6 +666,11 @@
 
     initCharts();
     renderEditors();
+    
+    // 初回読み込み時は「前回の記録」を現在の状態で上書きしておく（ロード直後にいきなり紙吹雪が降るのを防ぐため）
+    const initialCompletedCount = todos.filter(t => t.completed).length;
+    previousPercent = todos.length ? Math.round((initialCompletedCount / todos.length) * 100) : 0;
+    
     renderTodoList();
 </script>
 </body>
